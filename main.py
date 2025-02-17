@@ -10,7 +10,7 @@ import threading
 # Configuración de usuario administrador predefinido
 ADMIN_USER = "FDM-soporte"  # Cambia esto según tu configuración
 
-# Función para escanear la red y obtener MACs e IPs
+# Función para escanear la red y obtener MACs e IPs, excluyendo direcciones de multidifusión
 def get_mac_ip_list():
     devices = []
     
@@ -21,7 +21,12 @@ def get_mac_ip_list():
         if match:
             ip, mac = match.groups()
             if mac != "ff-ff-ff-ff-ff-ff":  # Filtrar broadcasts
-                devices.append((ip, mac))
+                # Excluir direcciones de multidifusión
+                if not ip.startswith("239.") and not ip.startswith("224."):
+                    devices.append((ip, mac))
+    
+    # Ordenar las direcciones IP de menor a mayor
+    devices.sort(key=lambda x: socket.inet_aton(x[0]))
     
     return devices
 
