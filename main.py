@@ -2,19 +2,18 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 import subprocess
 import socket
-import struct
 import os
 import re
 import threading
 
 # Configuración de usuario administrador predefinido
-ADMIN_USER = "FDM-soporte"
+ADMIN_USER = "FDM-Soporte"
 
 class RemoteControlApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Control Remoto - WoL, Apagado & RDP")
-        self.root.geometry("600x400")
+        self.root.geometry("800x400")  # Aumentado el ancho para acomodar los botones
         
         self.device_vars = {}
         self.setup_ui()
@@ -43,15 +42,22 @@ class RemoteControlApp:
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # Botones de acción
+        # Frame para botones (horizontal)
         button_frame = ttk.Frame(self.root)
         button_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        ttk.Button(button_frame, text="Escanear Red", command=self.update_device_list).pack(pady=2)
-        ttk.Button(button_frame, text="Encender (WoL)", command=lambda: self.handle_selection("wol")).pack(pady=2)
-        ttk.Button(button_frame, text="Apagar Equipos", command=lambda: self.handle_selection("shutdown")).pack(pady=2)
-        ttk.Button(button_frame, text="Reiniciar Equipos", command=lambda: self.handle_selection("restart")).pack(pady=2)
-        ttk.Button(button_frame, text="Conectar por RDP", command=lambda: self.handle_selection("rdp")).pack(pady=2)
+        # Crear y distribuir botones horizontalmente
+        buttons = [
+            ("Escanear Red", self.update_device_list),
+            ("Encender (WoL)", lambda: self.handle_selection("wol")),
+            ("Apagar Equipos", lambda: self.handle_selection("shutdown")),
+            ("Reiniciar Equipos", lambda: self.handle_selection("restart")),
+            ("Conectar por RDP", lambda: self.handle_selection("rdp"))
+        ]
+        
+        for i, (text, command) in enumerate(buttons):
+            btn = ttk.Button(button_frame, text=text, command=command)
+            btn.pack(side=tk.LEFT, padx=5)
         
         # Vincular evento de clic
         self.tree.bind('<Button-1>', self.handle_click)
@@ -110,14 +116,12 @@ class RemoteControlApp:
                           if self.tree.item(item)["values"][1] == ip)
                 threading.Thread(target=self.wake_on_lan, args=(mac,)).start()
         elif action in ["shutdown", "restart"]:
-            # Unir las IPs con comas para el comando
             ips = ",".join(selected_items)
             if action == "shutdown":
                 threading.Thread(target=self.shutdown_remote, args=(ips,)).start()
             else:
                 threading.Thread(target=self.restart_remote, args=(ips,)).start()
         elif action == "rdp":
-            # RDP solo puede conectarse a un equipo a la vez
             if len(selected_items) > 1:
                 messagebox.showwarning("RDP", "Solo se puede conectar a un equipo a la vez por RDP.")
                 return
