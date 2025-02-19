@@ -1,19 +1,27 @@
-# utils/network.py
 import socket
 import subprocess
 import re
+import logging
 from config.constants import ADMIN_USER
+from utils.logger import log_action  # 🔹 Asegúrate de importar la función de logging
 
 def get_mac_ip_list():
     devices = []
-    result = subprocess.run("arp -a", capture_output=True, text=True, shell=True)
-    for line in result.stdout.split("\n"):
-        match = re.search(r"(\d+\.\d+\.\d+\.\d+)\s+([\w-]+)", line)
-        if match:
-            ip, mac = match.groups()
-            if mac != "ff-ff-ff-ff-ff-ff" and not ip.startswith(("239.", "224.")):
-                devices.append((ip, mac))
-    return sorted(devices, key=lambda x: socket.inet_aton(x[0]))
+    try:
+        result = subprocess.run("arp -a", capture_output=True, text=True, shell=True)
+        for line in result.stdout.split("\n"):
+            match = re.search(r"(\d+\.\d+\.\d+\.\d+)\s+([\w-]+)", line)
+            if match:
+                ip, mac = match.groups()
+                if mac != "ff-ff-ff-ff-ff-ff" and not ip.startswith(("239.", "224.")):
+                    devices.append((ip, mac))
+
+        log_action("Escanear red", "Todos", f"Encontrados {len(devices)} dispositivos")  # 🔹 Log exitoso
+        return sorted(devices, key=lambda x: socket.inet_aton(x[0]))
+    
+    except Exception as e:
+        log_action("Escanear red", "Error", str(e))  # 🔹 Log de error
+        return []
 
 def wake_on_lan(mac_address):
     try:
@@ -23,30 +31,46 @@ def wake_on_lan(mac_address):
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         sock.sendto(magic_packet, ("255.255.255.255", 9))
         sock.close()
+
+        log_action("WoL", mac_address, "Success")  # 🔹 Log exitoso
         return True, "Success"
+    
     except Exception as e:
+        log_action("WoL", mac_address, f"Error: {str(e)}")  # 🔹 Log de error
         return False, str(e)
 
 def shutdown_remote(ips):
     try:
         command = f'powershell -Command "Stop-Computer -ComputerName {ips} -Force -Credential {ADMIN_USER}"'
         subprocess.run(command, shell=True)
+
+        log_action("Shutdown", ips, "Success")  # 🔹 Log exitoso
         return True, "Success"
+    
     except Exception as e:
+        log_action("Shutdown", ips, f"Error: {str(e)}")  # 🔹 Log de error
         return False, str(e)
 
 def restart_remote(ips):
     try:
         command = f'powershell -Command "Restart-Computer -ComputerName {ips} -Force -Credential {ADMIN_USER}"'
         subprocess.run(command, shell=True)
+
+        log_action("Restart", ips, "Success")  # 🔹 Log exitoso
         return True, "Success"
+    
     except Exception as e:
+        log_action("Restart", ips, f"Error: {str(e)}")  # 🔹 Log de error
         return False, str(e)
 
 def connect_rdp(ip):
     try:
         command = f"mstsc /v:{ip}"
         subprocess.Popen(command, shell=True)
+
+        log_action("RDP", ip, "Success")  # 🔹 Log exitoso
         return True, "Success"
+    
     except Exception as e:
+        log_action("RDP", ip, f"Error: {str(e)}")  # 🔹 Log de error
         return False, str(e)
