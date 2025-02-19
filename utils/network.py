@@ -1,0 +1,52 @@
+# utils/network.py
+import socket
+import subprocess
+import re
+from config.constants import ADMIN_USER
+
+def get_mac_ip_list():
+    devices = []
+    result = subprocess.run("arp -a", capture_output=True, text=True, shell=True)
+    for line in result.stdout.split("\n"):
+        match = re.search(r"(\d+\.\d+\.\d+\.\d+)\s+([\w-]+)", line)
+        if match:
+            ip, mac = match.groups()
+            if mac != "ff-ff-ff-ff-ff-ff" and not ip.startswith(("239.", "224.")):
+                devices.append((ip, mac))
+    return sorted(devices, key=lambda x: socket.inet_aton(x[0]))
+
+def wake_on_lan(mac_address):
+    try:
+        mac_bytes = bytes.fromhex(mac_address.replace(":", "").replace("-", ""))
+        magic_packet = b'\xff' * 6 + mac_bytes * 16
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.sendto(magic_packet, ("255.255.255.255", 9))
+        sock.close()
+        return True, "Success"
+    except Exception as e:
+        return False, str(e)
+
+def shutdown_remote(ips):
+    try:
+        command = f'powershell -Command "Stop-Computer -ComputerName {ips} -Force -Credential {ADMIN_USER}"'
+        subprocess.run(command, shell=True)
+        return True, "Success"
+    except Exception as e:
+        return False, str(e)
+
+def restart_remote(ips):
+    try:
+        command = f'powershell -Command "Restart-Computer -ComputerName {ips} -Force -Credential {ADMIN_USER}"'
+        subprocess.run(command, shell=True)
+        return True, "Success"
+    except Exception as e:
+        return False, str(e)
+
+def connect_rdp(ip):
+    try:
+        command = f"mstsc /v:{ip}"
+        subprocess.Popen(command, shell=True)
+        return True, "Success"
+    except Exception as e:
+        return False, str(e)
