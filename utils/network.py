@@ -41,6 +41,9 @@ def wake_on_lan(mac_address):
 
 def shutdown_remote(ips):
     try:
+        if isinstance(ips, list):  # 🔹 Convertir la lista de IPs en una cadena separada por comas
+            ips = ",".join(ips)
+
         command = f'powershell -Command "Stop-Computer -ComputerName {ips} -Force -Credential {ADMIN_USER}"'
         subprocess.run(command, shell=True)
 
@@ -53,6 +56,9 @@ def shutdown_remote(ips):
 
 def restart_remote(ips):
     try:
+        if isinstance(ips, list):  # 🔹 Convertir la lista de IPs en una cadena separada por comas
+            ips = ",".join(ips)
+
         command = f'powershell -Command "Restart-Computer -ComputerName {ips} -Force -Credential {ADMIN_USER}"'
         subprocess.run(command, shell=True)
 
@@ -62,6 +68,7 @@ def restart_remote(ips):
     except Exception as e:
         log_action("Restart", ips, f"Error: {str(e)}")  # 🔹 Log de error
         return False, str(e)
+
 
 def connect_rdp(ip):
     try:

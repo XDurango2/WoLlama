@@ -3,7 +3,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import json
 import os
-import subprocess
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from config.constants import APP_NAME, APP_VERSION
 from utils.network import get_mac_ip_list, wake_on_lan, shutdown_remote, restart_remote, connect_rdp
 from utils.logger import create_logging_window,log_action
@@ -196,6 +197,7 @@ class MainWindow(tk.Tk):
         for ip, mac in unique_devices:
             item = self.tree.insert("", "end", values=("☐", ip, mac))
             self.device_vars[item] = False
+   
     def load_favorites(self):
         """Carga la lista de favoritos desde un archivo JSON."""
         if os.path.exists("favorites.json"):
@@ -221,20 +223,26 @@ class MainWindow(tk.Tk):
                 "Por favor, selecciona al menos un equipo."
             )
             return
-            
-        for ip in selected_items:
-            mac = next((m for i, m in self.all_devices if i == ip), None)
-            if action == "wol" and mac:
-                wake_on_lan(mac)
+        
+        def process_devices():
+            if action == "wol":
+                for ip in selected_items:
+                    mac = next((m for i, m in self.all_devices if i == ip), None)
+                    if mac:
+                        wake_on_lan(mac)
             elif action == "shutdown":
-                shutdown_remote(ip)
+                shutdown_remote(selected_items)  # 🔹 Enviar lista completa de IPs
             elif action == "restart":
-                restart_remote(ip)
+                restart_remote(selected_items)  # 🔹 Enviar lista completa de IPs
             elif action == "rdp":
-                connect_rdp(ip)
+                for ip in selected_items:
+                    connect_rdp(ip)
 
-        messagebox.showinfo("Acción completada", f"Acción {action} ejecutada.")
-    
+            self.after(0, lambda: messagebox.showinfo("Acción completada", 
+                    f"Acción {action} ejecutada en los equipos seleccionados."))
+
+        threading.Thread(target=process_devices, daemon=True).start()
+
     def export_devices(self):
         messagebox.showinfo("Exportar", "Exportando lista de dispositivos...")
     def import_devices(self):
