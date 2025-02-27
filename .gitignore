@@ -163,3 +163,4 @@ favoritesExport.json
 config/config.json
 favorites.json
 .gitignore
+utils/github_tests.py

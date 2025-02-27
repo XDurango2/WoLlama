@@ -11,6 +11,7 @@ from .favorites_manager import FavoritesManager
 from .export_favorites import export_favorites
 from .import_favorites import import_favorites
 from .change_admin import change_admin_user
+from utils.updater import check_for_updates_gui
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -27,7 +28,7 @@ class MainWindow(tk.Tk):
         
         self.setup_ui()
         self.setup_menu()
-        
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
     def setup_ui(self):
         # Frame principal
         main_frame = ttk.Frame(self)
@@ -142,6 +143,7 @@ class MainWindow(tk.Tk):
             # Menú Ayuda
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Ayuda", menu=help_menu)
+        help_menu.add_command(label="Buscar actualizaciones", command=lambda: check_for_updates_gui(self))
         help_menu.add_command(label="Acerca de", command=self.open_about_window)
 
     def load_config(self):
@@ -250,7 +252,10 @@ class MainWindow(tk.Tk):
     def show_activity_log(self):
         create_logging_window()
     
-
+    def on_closing(self):
+            # Realiza cualquier limpieza necesaria aquí
+            #logging.shutdown()
+            self.destroy()
 if __name__ == "__main__":
     app = MainWindow()
     app.mainloop()
