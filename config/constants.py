@@ -1,6 +1,6 @@
 # config/constants.py
 APP_NAME = "WoLlama"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.2.0"
 APP_DESCRIPTION = """WoLlama es una herramienta para administración remota de equipos en red.
 Permite realizar operaciones como Wake-on-LAN, apagado remoto, reinicio y conexión RDP.
 

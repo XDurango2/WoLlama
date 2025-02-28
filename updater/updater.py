@@ -1,23 +1,65 @@
 import os
-import subprocess
 import shutil
 import requests
+import subprocess
+import json
 import sys
 import time
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
+from cryptography.fernet import Fernet
+
+# Función para obtener la ruta donde se almacenará la configuración y la clave
+def get_user_data_path():
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.environ["APPDATA"], "WoLlama")  # Para Windows
+    return os.path.dirname(os.path.abspath(__file__))
 
 # Rutas y configuración
-APP_DIR = os.path.dirname(os.path.abspath(sys.executable))  # Carpeta de instalación
-UPDATE_TEMP_DIR = os.path.join(os.environ.get("TEMP", APP_DIR), "update_temp")  # Carpeta temporal
+BASE_PATH = get_user_data_path()
+CONFIG_FILE = os.path.join(BASE_PATH, "config.json")
+KEY_FILE = os.path.join(BASE_PATH, "secret.key")
 EXECUTABLE_NAME = "WoLlama.exe"  # Nombre del ejecutable principal
 UPDATE_EXE_NAME = "WoLlama_update.exe"  # Nombre del archivo descargado
+UPDATE_TEMP_DIR = os.path.join(BASE_PATH, "update_temp")  # Definir el directorio temporal para la actualización
 GITHUB_RELEASE_URL = "https://api.github.com/repos/XDurango2/WoLlama/releases/latest"
+
+# Cargar la clave de cifrado
+def load_key():
+    """Carga la clave de cifrado desde el archivo secret.key"""
+    with open(KEY_FILE, "rb") as key_file:
+        return key_file.read()
+
+# Cargar configuración desde config.json
+def load_config():
+    """Carga la configuración desde el archivo config.json y desencripta el admin_user"""
+    try:
+        with open(CONFIG_FILE, "r") as f:
+            config = json.load(f)
+            encrypted_user = config.get("admin_user", "")
+            app_version = config.get("app_version", "0.0.0")
+            app_name = config.get("app_name", "WoLlama")
+
+            # Desencriptar el admin_user
+            if encrypted_user:
+                fernet_key = load_key()
+                cipher = Fernet(fernet_key)
+                admin_user = cipher.decrypt(encrypted_user.encode()).decode()
+            else:
+                admin_user = "FDM-Soporte"
+
+            return admin_user, app_version, app_name
+    except (json.JSONDecodeError, Exception):
+        return "FDM-Soporte", "0.0.0", "WoLlama"
+
+# Cargar configuración (esto incluirá el admin_user y la configuración de la app)
+admin_user, app_version, app_name = load_config()
+
 class UpdaterApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("WoLlama Updater")
+        self.root.title(f"{app_name} Updater")
         self.root.geometry("400x200")
         self.root.resizable(False, False)
 
@@ -45,9 +87,9 @@ class UpdaterApp:
             latest_release = response.json()
 
             latest_version = latest_release.get("tag_name", "0.0.0")
-            current_version = "1.0.0"  # Puedes cambiar esto para que lo lea desde un archivo
 
-            if latest_version > current_version:
+            # Verificar si la nueva versión es más reciente que la actual
+            if latest_version > app_version:
                 self.status_label.config(text=f"Nueva versión disponible: {latest_version}")
             else:
                 self.status_label.config(text="No hay actualizaciones disponibles")
@@ -113,7 +155,7 @@ class UpdaterApp:
         """Reemplaza el ejecutable con la nueva versión."""
         try:
             self.close_application()
-            new_executable_path = os.path.join(APP_DIR, EXECUTABLE_NAME)
+            new_executable_path = os.path.join(BASE_PATH, EXECUTABLE_NAME)
 
             if os.path.exists(new_executable_path):
                 shutil.move(new_executable_path, new_executable_path + ".bak")
@@ -127,7 +169,7 @@ class UpdaterApp:
 
     def restart_application(self):
         """Reinicia la aplicación con la nueva versión."""
-        new_executable_path = os.path.join(APP_DIR, EXECUTABLE_NAME)
+        new_executable_path = os.path.join(BASE_PATH, EXECUTABLE_NAME)
         subprocess.Popen([new_executable_path], shell=True)
         self.root.destroy()
         os._exit(0)

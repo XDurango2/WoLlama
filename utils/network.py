@@ -2,8 +2,10 @@ import socket
 import subprocess
 import re
 
-from config.setup import ADMIN_USER
+from config.setup import ADMIN_USER  # 🔹 Asegúrate de importar la función get_config
 from utils.logger import log_action  # 🔹 Asegúrate de importar la función de logging
+
+
 
 def get_mac_ip_list():
     devices = []

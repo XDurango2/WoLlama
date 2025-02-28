@@ -165,3 +165,6 @@ favorites.json
 .gitignore
 utils/github_tests.py
 WoLlama_Updater.exe
+Wo.iss
+Output/mysetup.exe
+Output/myUnisetup.exe
