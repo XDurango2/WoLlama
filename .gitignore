@@ -164,3 +164,4 @@ config/config.json
 favorites.json
 .gitignore
 utils/github_tests.py
+WoLlama_Updater.exe

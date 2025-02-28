@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 import os, json
-from config.setup import encrypt_data, fernet_key,CONFIG_FILE
+from config.setup import encrypt_data, fernet_key,CONFIG_FILE,reload_config
 def change_admin_user(self):
     """ Abre una ventana para cambiar el usuario administrador """
     def save_user():
@@ -22,7 +22,8 @@ def change_admin_user(self):
             config["admin_user"] = encrypted_user
             with open(CONFIG_FILE, "w") as f:
                 json.dump(config, f, indent=4)
-
+            
+            reload_config()
             messagebox.showinfo("Cambio de usuario", "Usuario cambiado correctamente.")
             user_window.destroy()
 

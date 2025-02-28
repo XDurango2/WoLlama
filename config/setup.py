@@ -59,3 +59,18 @@ if os.path.exists(CONFIG_FILE):
 else:
     ADMIN_USER = DEFAULT_ADMIN_USER
     FAVORITES = []
+# En setup.py
+def reload_config():
+    global ADMIN_USER, FAVORITES
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                config = json.load(f)
+                encrypted_user = config.get("admin_user", "")
+                encrypted_favorites = config.get("favorites", "")
+
+                ADMIN_USER = decrypt_data(encrypted_user, fernet_key) if encrypted_user else DEFAULT_ADMIN_USER
+                FAVORITES = decrypt_data(encrypted_favorites, fernet_key) if encrypted_favorites else []
+        except (json.JSONDecodeError, Exception):
+            ADMIN_USER = DEFAULT_ADMIN_USER
+            FAVORITES = []

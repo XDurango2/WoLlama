@@ -11,7 +11,7 @@ from .favorites_manager import FavoritesManager
 from .export_favorites import export_favorites
 from .import_favorites import import_favorites
 from .change_admin import change_admin_user
-from utils.updater import check_for_updates_gui
+import os, subprocess
 
 class MainWindow(tk.Tk):
     def __init__(self):
@@ -143,7 +143,7 @@ class MainWindow(tk.Tk):
             # Menú Ayuda
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Ayuda", menu=help_menu)
-        help_menu.add_command(label="Buscar actualizaciones", command=lambda: check_for_updates_gui(self))
+        help_menu.add_command(label="Buscar actualizaciones", command=run_updater)
         help_menu.add_command(label="Acerca de", command=self.open_about_window)
 
     def load_config(self):
@@ -223,28 +223,57 @@ class MainWindow(tk.Tk):
             messagebox.showwarning("Advertencia", "No se ha seleccionado ningún dispositivo.")
             return
 
+        # Obtener IPs y MACs de los elementos seleccionados
+        devices = []
         for item in selected_items:
-            try:
-                values = self.tree.item(item)["values"]
-                ip = values[1]
-                mac = values[2]
-                # Realiza la acción correspondiente
-                if action == "wol":
-                    wake_on_lan(mac)
-                elif action == "shutdown":
-                    shutdown_remote(ip)
-                elif action == "restart":
-                    restart_remote(ip)
-                elif action == "rdp":
-                    connect_rdp(ip)
-                log_action(action, ip, "Success")
-            except IndexError:
-                messagebox.showerror("Error", "No se pudo obtener la información del dispositivo seleccionado.")
-            except Exception as e:
-                messagebox.showerror("Error", f"Ocurrió un error: {e}")
-                log_action(action, ip, f"Failed: {e}")
+            values = self.tree.item(item)["values"]
+            devices.append((values[1], values[2]))  # (IP, MAC)
 
-    
+        # Actualizar la barra de estado
+        self.status_var.set(f"Ejecutando {action} en los dispositivos seleccionados...")
+        
+        # Función para ejecutar en un hilo separado
+        def process_devices():
+            results = []
+            for ip, mac in devices:
+                try:
+                    if action == "wol":
+                        result = wake_on_lan(mac)
+                    elif action == "shutdown":
+                        result = shutdown_remote(ip)
+                    elif action == "restart":
+                        result = restart_remote(ip)
+                    elif action == "rdp":
+                        result = connect_rdp(ip)
+                    else:
+                        success = False
+
+                    status_text = "Éxito" if success else "Fallido"
+                    status_color = "green" if success else "red"
+
+                    log_action(action, ip, status_text)
+                    results.append((item, status_text, status_color))
+
+                except Exception as e:
+                    error_message = str(e)
+                    log_action(action, ip, "Failed", error_message)
+                    results.append((item, "Error", "red"))  # Siempre 3 valores
+
+        # Actualizar la interfaz desde el hilo principal
+            self.after(0, lambda: self._update_ui_after_action(results, action))
+
+    # Iniciar la operación en un hilo separado
+        threading.Thread(target=process_devices, daemon=True).start()
+
+    def _update_ui_after_action(self, results, action):
+        """Actualiza la UI con el resultado de cada intento."""
+        for item, status_text, status_color in results:
+            self.tree.item(item, values=(status_text,))
+            self.tree.tag_configure("red", foreground="red")
+            self.tree.item(item, tags=("red",) if status_color == "red" else ())
+
+        self.status_var.set("Listo")
+        
     def open_about_window(self):
         about = AboutWindow(self)
         about.grab_set()
@@ -256,6 +285,18 @@ class MainWindow(tk.Tk):
             # Realiza cualquier limpieza necesaria aquí
             #logging.shutdown()
             self.destroy()
+def run_updater():
+    """Ejecuta el actualizador en un proceso independiente sin bloquear la GUI."""
+    updater_path = os.path.join(os.getcwd(), "WoLlama_Updater.exe")
+    
+    if os.path.exists(updater_path):
+        def launch_updater():
+            subprocess.Popen([updater_path], shell=True)
+           # os._exit(0)  # Cierra la aplicación principal después de lanzar el actualizador
+        
+        threading.Thread(target=launch_updater, daemon=True).start()
+    else:
+        messagebox.showerror("Error", "El actualizador no se encuentra.")
 if __name__ == "__main__":
     app = MainWindow()
     app.mainloop()
