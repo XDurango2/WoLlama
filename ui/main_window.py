@@ -218,61 +218,50 @@ class MainWindow(tk.Tk):
         self.filter_devices()
    
     def handle_selection(self, action):
-        selected_items = self.tree.selection()
-        if not selected_items:
-            messagebox.showwarning("Advertencia", "No se ha seleccionado ningún dispositivo.")
-            return
-
-        # Obtener IPs y MACs de los elementos seleccionados
-        devices = []
-        for item in selected_items:
-            values = self.tree.item(item)["values"]
-            devices.append((values[1], values[2]))  # (IP, MAC)
-
-        # Actualizar la barra de estado
-        self.status_var.set(f"Ejecutando {action} en los dispositivos seleccionados...")
+        selected_items = [
+            self.tree.item(item)["values"][1] 
+            for item in self.device_vars 
+            if self.device_vars[item]
+        ]
         
-        # Función para ejecutar en un hilo separado
+        if not selected_items:
+            messagebox.showwarning(
+                "Selección",
+                "Por favor, selecciona al menos un equipo."
+            )
+            return
+        
         def process_devices():
-            results = []
-            for ip, mac in devices:
-                try:
-                    if action == "wol":
-                        result = wake_on_lan(mac)
-                    elif action == "shutdown":
-                        result = shutdown_remote(ip)
-                    elif action == "restart":
-                        result = restart_remote(ip)
-                    elif action == "rdp":
-                        result = connect_rdp(ip)
-                    else:
-                        success = False
+            if action == "wol":
+                for ip in selected_items:
+                    mac = next((m for i, m in self.all_devices if i == ip), None)
+                    if mac:
+                        wake_on_lan(mac)
+            elif action == "shutdown":
+                shutdown_remote(selected_items)  # 🔹 Enviar lista completa de IPs
+            elif action == "restart":
+                restart_remote(selected_items)  # 🔹 Enviar lista completa de IPs
+            elif action == "rdp":
+                for ip in selected_items:
+                    connect_rdp(ip)
 
-                    status_text = "Éxito" if success else "Fallido"
-                    status_color = "green" if success else "red"
+            self.after(0, lambda: messagebox.showinfo("Acción completada", 
+                    f"Acción {action} ejecutada en los equipos seleccionados."))
 
-                    log_action(action, ip, status_text)
-                    results.append((item, status_text, status_color))
-
-                except Exception as e:
-                    error_message = str(e)
-                    log_action(action, ip, "Failed", error_message)
-                    results.append((item, "Error", "red"))  # Siempre 3 valores
-
-        # Actualizar la interfaz desde el hilo principal
-            self.after(0, lambda: self._update_ui_after_action(results, action))
-
-    # Iniciar la operación en un hilo separado
         threading.Thread(target=process_devices, daemon=True).start()
 
     def _update_ui_after_action(self, results, action):
         """Actualiza la UI con el resultado de cada intento."""
         for item, status_text, status_color in results:
-            self.tree.item(item, values=(status_text,))
-            self.tree.tag_configure("red", foreground="red")
-            self.tree.item(item, tags=("red",) if status_color == "red" else ())
+            if self.tree.exists(item):  # Verificar que el item existe en la tabla antes de actualizar
+                self.tree.item(item, values=(status_text,))
+                self.tree.tag_configure("red", foreground="red")
+                self.tree.item(item, tags=("red",) if status_color == "red" else ())
+            else:
+                print(f"Error: Item {item} no encontrado en Treeview")
 
         self.status_var.set("Listo")
+
         
     def open_about_window(self):
         about = AboutWindow(self)

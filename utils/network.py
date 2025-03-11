@@ -24,7 +24,6 @@ def get_mac_ip_list():
     except Exception as e:
         log_action("Escanear red", "Error", str(e))  # 🔹 Log de error
         return []
-
 def wake_on_lan(mac_address):
     try:
         mac_bytes = bytes.fromhex(mac_address.replace(":", "").replace("-", ""))
@@ -47,7 +46,8 @@ def shutdown_remote(ips):
             ips = ",".join(ips)
 
         command = f'powershell -Command "Stop-Computer -ComputerName {ips} -Force -Credential {ADMIN_USER}"'
-        subprocess.run(command, shell=True)
+        print(command)
+        #subprocess.run(command, shell=True)
 
         log_action("Shutdown", ips, "Success")  # 🔹 Log exitoso
         return True, "Success"
@@ -56,6 +56,11 @@ def shutdown_remote(ips):
         log_action("Shutdown", ips, f"Error: {str(e)}")  # 🔹 Log de error
         return False, str(e)
 
+
+    except subprocess.CalledProcessError as e:
+        log_action("Shutdown", ", ".join(ips) if isinstance(ips, list) else ips, f"Error: {str(e)}")
+        return False, str(e)
+    
 def restart_remote(ips):
     try:
         if isinstance(ips, list):  # 🔹 Convertir la lista de IPs en una cadena separada por comas
