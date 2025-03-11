@@ -46,8 +46,8 @@ def shutdown_remote(ips):
             ips = ",".join(ips)
 
         command = f'powershell -Command "Stop-Computer -ComputerName {ips} -Force -Credential {ADMIN_USER}"'
-        print(command)
-        #subprocess.run(command, shell=True)
+       # print(command)
+        subprocess.run(command, shell=True)
 
         log_action("Shutdown", ips, "Success")  # 🔹 Log exitoso
         return True, "Success"
