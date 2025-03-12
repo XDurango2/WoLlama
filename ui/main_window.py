@@ -1,6 +1,6 @@
 # gui/main_window.py
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox,filedialog
 import json
 import threading
 from config.constants import APP_NAME, APP_VERSION
@@ -8,7 +8,7 @@ from utils.network import get_mac_ip_list, wake_on_lan, shutdown_remote, restart
 from utils.logger import create_logging_window, log_action
 from .about_window import AboutWindow
 from .favorites_manager import FavoritesManager
-from .export_favorites import export_favorites
+from .export_favorites import FavoritesExporter
 from .import_favorites import import_favorites
 from .change_admin import change_admin_user
 import os, subprocess
@@ -137,8 +137,9 @@ class MainWindow(tk.Tk):
         menubar.add_cascade(label="Herramientas", menu=tools_menu)
         tools_menu.add_command(label="Cambiar usuario", command=lambda: change_admin_user(self))
         tools_menu.add_separator()
-        tools_menu.add_command(label="Exportar favoritos", command=lambda: export_favorites(self))
-        tools_menu.add_command(label="Importar favoritos", command=lambda: import_favorites(self))
+        self.exporter = FavoritesExporter(self.favorites_manager)
+        tools_menu.add_command(label="Exportar favoritos", command=self.exporter.export_favorites)
+        tools_menu.add_command(label="Importar favoritos", command=self.import_favorites)
 
             # Menú Ayuda
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -262,7 +263,14 @@ class MainWindow(tk.Tk):
 
         self.status_var.set("Listo")
 
-        
+    def import_favorites(self):
+        file_path = filedialog.askopenfilename(
+            filetypes=(("JSON", "*.json"), ("CSV", "*.csv")),
+            title="Importar favoritos"
+        )
+        if file_path:
+            import_favorites(self, file_path) 
+    
     def open_about_window(self):
         about = AboutWindow(self)
         about.grab_set()
@@ -274,6 +282,7 @@ class MainWindow(tk.Tk):
             # Realiza cualquier limpieza necesaria aquí
             #logging.shutdown()
             self.destroy()
+
 def run_updater():
     """Ejecuta el actualizador en un proceso independiente sin bloquear la GUI."""
     updater_path = os.path.join(os.getcwd(), "WoLlama_Updater.exe")
@@ -286,6 +295,7 @@ def run_updater():
         threading.Thread(target=launch_updater, daemon=True).start()
     else:
         messagebox.showerror("Error", "El actualizador no se encuentra.")
+
 if __name__ == "__main__":
     app = MainWindow()
     app.mainloop()
