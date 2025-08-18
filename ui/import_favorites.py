@@ -40,7 +40,12 @@ def import_favorites(main_window, file_path):
 
             # Si no tiene MAC (por ejemplo, localhost), generar un identificador único con la IP
             if not mac_address:
-                mac_address = f"NO-MAC-{new_device.get('ip', 'UNKNOWN')}"
+                ip_address = new_device.get("ip", "").strip()
+                detected_device = next((ip, mac) for ip, mac in main_window.all_devices if ip == ip_address)
+                if detected_device:
+                    mac_address = detected_device[1]
+                else:
+                    mac_address = f"NO-MAC-{ip_address}"
 
             # Comprobar si el dispositivo ya existe en la lista actual por MAC
             if not any(device.get("mac", "").strip() == mac_address for device in current_favorites):

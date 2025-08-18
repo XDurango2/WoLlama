@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox,filedialog
 import json
 import threading
 from config.constants import APP_NAME, APP_VERSION
+#from utils.rdp import RDPGridWindow
 from utils.network import get_mac_ip_list, wake_on_lan, shutdown_remote, restart_remote, connect_rdp
 from utils.logger import create_logging_window, log_action
 from .about_window import AboutWindow
@@ -231,7 +232,16 @@ class MainWindow(tk.Tk):
                 "Por favor, selecciona al menos un equipo."
             )
             return
-        
+        if action == "rdp":
+            if not selected_items:
+                messagebox.showerror(
+                    "Error de conexión",
+                    "Debes seleccionar al menos un equipo para iniciar RDP."
+                )
+                return
+            RDPGridWindow(self,selected_items)
+            self.status_var.set(f"Conectando a {selected_items[0]} por RDP...")
+            return
         def process_devices():
             if action == "wol":
                 for ip in selected_items:
@@ -242,12 +252,9 @@ class MainWindow(tk.Tk):
                 shutdown_remote(selected_items)  # 🔹 Enviar lista completa de IPs
             elif action == "restart":
                 restart_remote(selected_items)  # 🔹 Enviar lista completa de IPs
-            elif action == "rdp":
-                for ip in selected_items:
-                    connect_rdp(ip)
+            
 
-            self.after(0, lambda: messagebox.showinfo("Acción completada", 
-                    f"Acción {action} ejecutada en los equipos seleccionados."))
+            self.after(0, lambda: self.status_var.set(f"Acción {action} ejecutada en los equipos seleccionados."))
 
         threading.Thread(target=process_devices, daemon=True).start()
 
@@ -294,7 +301,7 @@ def run_updater():
         
         threading.Thread(target=launch_updater, daemon=True).start()
     else:
-        messagebox.showerror("Error", "El actualizador no se encuentra.")
+        messagebox.showerror("Error", "WoLlama Updater no esta disponible.")
 
 if __name__ == "__main__":
     app = MainWindow()
